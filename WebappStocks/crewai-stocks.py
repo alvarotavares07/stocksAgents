@@ -27,6 +27,9 @@ yahoo_finance_tool = Tool(
 # Configurando a chave da API OpenAI a partir das variáveis de ambiente (método seguro de gerenciamento de chaves)
 os.environ['OPENAI_API_KEY'] = st.secrets['OPENAI_API_KEY']
 
+# Definindo o modelo de linguagem LLM
+llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=st.secrets['OPENAI_API_KEY'])
+
 # Configuração do agente para análise de preços de ações
 stockPriceAnalyst = Agent(
     role="Senior stock price Analyst",  # Definindo o papel do agente
@@ -134,27 +137,20 @@ results['final_output']
 with st.sidebar:
     st.header('Enter the Stock to Research')  # Cabeçalho da barra lateral
 
-# Formulário para o usuário inserir o ticket da ação que deseja pesquisar
+    # Formulário para o usuário inserir o ticket da ação que deseja pesquisar
     with st.form(key='research_form'):
         topic = st.text_input("Select the ticket")  # Campo para entrada do ticket da ação
         submit_button = st.form_submit_button(label="Run Research")  # Botão para submeter o formulário
 
 # Verifica se o botão de submissão foi clicado
 if submit_button:
-# Exibe um erro se o campo de ticket estiver vazio
+    # Exibe um erro se o campo de ticket estiver vazio
     if not topic:
         st.error("Please fill the ticket field")
     else:
-# Inicia o processo com o ticket fornecido pelo usuário
+        # Inicia o processo com o ticket fornecido pelo usuário
         results = crew.kickoff(inputs={"ticket": topic, "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
-# Exibe os resultados da pesquisa para o usuário
+        # Exibe os resultados da pesquisa para o usuário
         st.subheader("Results of your research:")
         st.write(results['final_output'])
-
-
-
-
-
-
-
