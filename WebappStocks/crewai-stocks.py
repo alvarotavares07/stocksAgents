@@ -18,10 +18,10 @@ def fetch_stock_price(ticket):
 # Função para plotar os dados históricos de preços das ações
 def plot_stock_price(stock_data, ticket):
     plt.figure(figsize=(10, 5))
-    plt.plot(stock_data.index, stock_data['Close'], label='Close Price')
-    plt.title(f"Historical Close Price for {ticket}")
-    plt.xlabel("Date")
-    plt.ylabel("Price")
+    plt.plot(stock_data.index, stock_data['Close'], label='Preço de Fechamento')
+    plt.title(f"Preço Histórico de Fechamento para {ticket}")
+    plt.xlabel("Data")
+    plt.ylabel("Preço")
     plt.grid(True)
     plt.legend()
     st.pyplot(plt)  # Exibe o gráfico no Streamlit
@@ -29,21 +29,21 @@ def plot_stock_price(stock_data, ticket):
 # Criação de uma ferramenta que usa a função fetch_stock_price para buscar dados de ações
 yahoo_finance_tool = Tool(
     name="Yahoo Finance Tool",
-    description="Fetches stocks prices for {ticket} from the last year about a specific company from Yahoo Finance API",
+    description="Obtém preços de ações para {ticket} do último ano sobre uma empresa específica da API Yahoo Finance",
     func=lambda ticket: fetch_stock_price(ticket)
 )
 
 # Configurando a chave da API OpenAI a partir das variáveis de ambiente (método seguro de gerenciamento de chaves)
 os.environ['OPENAI_API_KEY'] = st.secrets['OPENAI_API_KEY']
 
-# Definindo o modelo de linguagem LLM
-llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=st.secrets['OPENAI_API_KEY'])
+# Definindo o modelo de linguagem LLM em português
+llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=st.secrets['OPENAI_API_KEY'], language="pt-BR")
 
 # Configuração do agente para análise de preços de ações
 stockPriceAnalyst = Agent(
-    role="Senior stock price Analyst",
-    goal="Find the {ticket} stock price and analyses trends",
-    backstory="You're highly experienced in analyzing the price of a specific stock and make predictions about its future price.",
+    role="Analista Sênior de Preços de Ações",
+    goal="Encontre o preço da ação {ticket} e analise tendências",
+    backstory="Você é altamente experiente em analisar o preço de uma ação específica e fazer previsões sobre seu preço futuro.",
     verbose=True,
     llm=llm,
     max_iter=5,
@@ -54,8 +54,8 @@ stockPriceAnalyst = Agent(
 
 # Configuração da tarefa para análise de preço das ações
 getStockPrice = Task(
-    description="Analyze the stock {ticket} price history and create a trend analysis of up, down or sideways",
-    expected_output="Specify the current trend stock price - up, down or sideways.\neg. stock= 'APPL, price UP'",
+    description="Analise o histórico de preços da ação {ticket} e crie uma análise de tendência - alta, baixa ou lateral",
+    expected_output="Especifique a tendência atual do preço da ação - alta, baixa ou lateral. Exemplo: ação = 'APPL, preço ALTA'",
     agent=stockPriceAnalyst
 )
 
@@ -64,9 +64,9 @@ search_tool = DuckDuckGoSearchResults(backend='news', num_results=10)
 
 # Configuração do agente para análise de notícias de ações
 newsAnalyst = Agent(
-    role="Stock News Analyst",
-    goal="Create a short summary of the market news related to the stock {ticket} company. Specify the current trend – up, down or sideways with the news context. For each request stock asset, specify a number between 0 and 100, where 0 is extreme fear and 100 is extreme greed.",
-    backstory="You're highly experienced in analyzing the market trends and news and have tracked assets for more than 10 years.",
+    role="Analista de Notícias de Ações",
+    goal="Crie um resumo curto das notícias de mercado relacionadas à empresa da ação {ticket}. Especifique a tendência atual - alta, baixa ou lateral com o contexto das notícias. Para cada ativo solicitado, especifique um número entre 0 e 100, onde 0 é medo extremo e 100 é ganância extrema.",
+    backstory="Você é altamente experiente em analisar as tendências do mercado e notícias, e acompanha ativos há mais de 10 anos.",
     verbose=True,
     llm=llm,
     max_iter=10,
@@ -77,27 +77,16 @@ newsAnalyst = Agent(
 
 # Configuração da tarefa para análise de notícias e criação de relatórios
 get_news = Task(
-    description=f"""Take the stock and always include BTC to it (if not requested).
-    Use the search tool to search each one individually.
-    
-    The current date is {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    
-    Compose the results into a helpful report""",
-    expected_output="""A summary of the overall market and one sentence summary for each request asset.
-    Include a fear/greed score for each asset based on the news. Use format:
-    <STOCK ASSET>
-    <SUMMARY BASED ON NEWS>
-    <TREND PREDICTION>
-    <FEAR/GREED SCORE>
-    """,
+    description=f"""Tome a ação e sempre inclua BTC (se não for solicitado). Use a ferramenta de busca para pesquisar cada uma individualmente. A data atual é {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}. Compile os resultados em um relatório útil""",
+    expected_output="""Um resumo geral do mercado e um resumo de uma frase para cada ativo solicitado. Inclua uma pontuação de medo/ganância para cada ativo com base nas notícias. Use o formato: <ATIVO> <RESUMO BASEADO NAS NOTÍCIAS> <PREDIÇÃO DE TENDÊNCIA> <PONTUAÇÃO DE MEDO/GANÂNCIA>""",
     agent=newsAnalyst
 )
 
 # Configuração do agente para escrever relatórios analíticos
 stockAnalystWrite = Agent(
-    role="Senior Stock Analyst Writer",
-    goal="Analyze the trends price and news and write an insightful, compelling and informative 3 paragraph long newsletter based on the stock",
-    backstory="You're widely accepted as the best stock analyst in the market.",
+    role="Redator Sênior de Análise de Ações",
+    goal="Analise as tendências de preço e notícias e escreva um informativo perspicaz, atraente e informativo de 3 parágrafos com base na ação {ticket}",
+    backstory="Você é amplamente aceito como o melhor analista de ações do mercado.",
     verbose=True,
     llm=llm,
     max_iter=5,
@@ -107,13 +96,12 @@ stockAnalystWrite = Agent(
 
 # Configuração da tarefa para escrever análises e relatórios
 writeAnalyses = Task(
-    description="Use the stock price trend and the stock news report to create an analysis and write the newsletter about the {ticket} company that is brief and highlights the most important points.",
-    expected_output="""An eloquent 3 paragraphs newsletter formatted as markdown in an easy readable manner. It should contain:
-    - 3 bullets executive summary
-    - Introduction - set the overall picture and spike up the interest
-    - main part provides the meat of the analysis including the news summary and fear/greed scores
-    - summary - key facts and concrete future trend prediction - up, down or sideways.
-    """,
+    description="Use a tendência do preço da ação e o relatório de notícias da ação para criar uma análise e escrever um informativo sobre a empresa {ticket} que seja breve e destaque os pontos mais importantes.",
+    expected_output="""Um informativo eloquente de 3 parágrafos formatado como markdown de forma fácil de ler. Deve conter:
+    - Resumo executivo em 3 pontos
+    - Introdução - estabeleça o cenário geral e desperte o interesse
+    - Parte principal fornecendo a essência da análise, incluindo o resumo das notícias e as pontuações de medo/ganância
+    - Resumo - principais fatos e previsão concreta de tendência futura - alta, baixa ou lateral.""",
     agent=stockAnalystWrite,
     context=[getStockPrice, get_news]
 )
@@ -138,27 +126,28 @@ final_output = results['final_output']
 
 # Configuração da interface do Streamlit para entrada de dados do usuário
 with st.sidebar:
-    st.header('Enter the Stock to Research')
+    st.header('Digite o código da ação para pesquisa')
 
     with st.form(key='research_form'):
-        topic = st.text_input("Select the ticket")
-        submit_button = st.form_submit_button(label="Run Research")
+        topic = st.text_input("Selecione o código da ação")
+        submit_button = st.form_submit_button(label="Pesquisar")
 
 if submit_button:
     if not topic:
-        st.error("Please fill the ticket field")
+        st.error("Por favor, preencha o campo com o código da ação")
     else:
         # Busca os dados da ação
         stock_data = fetch_stock_price(topic)
         
         # Exibe o gráfico dos dados históricos
-        st.subheader(f"Historical Data for {topic}")
+        st.subheader(f"Dados Históricos para {topic}")
         plot_stock_price(stock_data, topic)
         
-        # Inicia o processo com o ticket fornecido pelo usuário
+        # Inicia o processo com o código da ação fornecido pelo usuário
         results = crew.kickoff(inputs={"ticket": topic, "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
         # Exibe os resultados da pesquisa para o usuário
-        st.subheader("Results of your research:")
+        st.subheader("Resultados da sua pesquisa:")
         st.write(results['final_output'])
+
 
