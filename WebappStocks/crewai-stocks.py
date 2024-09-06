@@ -21,23 +21,18 @@ def fetch_stock_price(ticket):
         st.error(f"Erro ao buscar dados para {ticket}: {str(e)}")
         return None
 
-# Função para plotar os dados históricos de preços das ações
-def plot_stock_price(stock_data, ticket):
+# Função para plotar os dados históricos de preços das ações para comparação
+def plot_stock_price_comparison(stock_data_list, tickets):
     plt.figure(figsize=(10, 5))
-    plt.plot(stock_data.index, stock_data['Close'], label='Preço de Fechamento')
-    plt.title(f"Preço Histórico de Fechamento para {ticket}")
+    for stock_data, ticket in zip(stock_data_list, tickets):
+        plt.plot(stock_data.index, stock_data['Close'], label=f'{ticket} Preço de Fechamento')
+    
+    plt.title(f"Comparação de Preços Históricos de Ações")
     plt.xlabel("Data")
     plt.ylabel("Preço")
     plt.grid(True)
     plt.legend()
     st.pyplot(plt)  # Exibe o gráfico no Streamlit
-
-# Criação de uma ferramenta que usa a função fetch_stock_price para buscar dados de ações
-yahoo_finance_tool = Tool(
-    name="Yahoo Finance Tool",
-    description="Obtém preços de ações para {ticket} do último ano sobre uma empresa específica da API Yahoo Finance",
-    func=lambda ticket: fetch_stock_price(ticket)
-)
 
 # Verificação se a chave da API OpenAI está carregada
 if "OPENAI_API_KEY" not in st.secrets:
@@ -59,104 +54,36 @@ else:
         allow_delegation=False
     )
 
-    # Configuração da tarefa para análise de preço das ações
-    getStockPrice = Task(
-        description="Analise o histórico de preços da ação {ticket} e crie uma análise de tendência - alta, baixa ou lateral",
-        expected_output="Especifique a tendência atual do preço da ação - alta, baixa ou lateral. Exemplo: ação = 'AAPL, preço ALTA'",
-        agent=stockPriceAnalyst
-    )
-
-    # Configuração da ferramenta de busca DuckDuckGo para análise de notícias
-    search_tool = DuckDuckGoSearchResults(backend='news', num_results=10)
-
-    # Configuração do agente para análise de notícias de ações
-    newsAnalyst = Agent(
-        role="Analista de Notícias de Ações",
-        goal="Crie um resumo curto das notícias de mercado relacionadas à empresa da ação {ticket}. Especifique a tendência atual - alta, baixa ou lateral com o contexto das notícias. Para cada ativo solicitado, especifique um número entre 0 e 100, onde 0 é medo extremo e 100 é ganância extrema.",
-        backstory="Você é altamente experiente em analisar as tendências do mercado e notícias, e acompanha ativos há mais de 10 anos.",
-        verbose=True,
-        llm=llm,
-        max_iter=10,
-        memory=True,
-        tools=[search_tool],
-        allow_delegation=False
-    )
-
-    # Configuração da tarefa para análise de notícias e criação de relatórios
-    get_news = Task(
-        description=f"""Tome a ação e sempre inclua BTC (se não for solicitado). Use a ferramenta de busca para pesquisar cada uma individualmente. A data atual é {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}. Compile os resultados em um relatório útil""",
-        expected_output="""Um resumo geral do mercado e um resumo de uma frase para cada ativo solicitado. Inclua uma pontuação de medo/ganância para cada ativo com base nas notícias. Use o formato: <ATIVO> <RESUMO BASEADO NAS NOTÍCIAS> <PREDIÇÃO DE TENDÊNCIA> <PONTUAÇÃO DE MEDO/GANÂNCIA>""",
-        agent=newsAnalyst
-    )
-
-    # Configuração do agente para escrever relatórios analíticos
-    stockAnalystWrite = Agent(
-        role="Redator Sênior de Análise de Ações",
-        goal="Analise as tendências de preço e notícias e escreva um informativo perspicaz, atraente e informativo de 3 parágrafos com base na ação {ticket}",
-        backstory="Você é amplamente aceito como o melhor analista de ações do mercado.",
-        verbose=True,
-        llm=llm,
-        max_iter=5,
-        memory=True,
-        allow_delegation=True
-    )
-
-    # Configuração da tarefa para escrever análises e relatórios
-    writeAnalyses = Task(
-        description="Use a tendência do preço da ação e o relatório de notícias da ação para criar uma análise e escrever um informativo sobre a empresa {ticket} que seja breve e destaque os pontos mais importantes.",
-        expected_output="""Um informativo eloquente de 3 parágrafos formatado como markdown de forma fácil de ler. Deve conter:
-        - Resumo executivo em 3 pontos
-        - Introdução - estabeleça o cenário geral e desperte o interesse
-        - Parte principal fornecendo a essência da análise, incluindo o resumo das notícias e as pontuações de medo/ganância
-        - Resumo - principais fatos e previsão concreta de tendência futura - alta, baixa ou lateral.""",
-        agent=stockAnalystWrite,
-        context=[getStockPrice, get_news]
-    )
-
-    # Configuração da equipe (Crew) que gerencia os agentes e tarefas
-    crew = Crew(
-        agents=[stockPriceAnalyst, newsAnalyst, stockAnalystWrite],
-        tasks=[getStockPrice, get_news, writeAnalyses],
-        verbose=2,
-        process=Process.hierarchical,
-        full_output=True,
-        share_crew=False,
-        manager_llm=llm,
-        max_iter=15
-    )
-
-    # Inicia o processo de execução das tarefas configuradas para a equipe
-    results = crew.kickoff(inputs={"ticket": "AAPL", "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-
-    # Exibe o resultado final após a execução de todas as tarefas
-    final_output = results['final_output']
-
     # Configuração da interface do Streamlit para entrada de dados do usuário
     with st.sidebar:
-        st.header('Digite o código da ação para pesquisa')
+        st.header('Digite o código das ações para pesquisa')
 
         with st.form(key='research_form'):
-            topic = st.text_input("Selecione o código da ação", value="AAPL")  # Valor padrão AAPL
+            # Adicionar múltiplas seleções
+            stock_symbols = st.multiselect(
+                "Selecione os códigos das ações para comparar",
+                options=["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],  # Você pode adicionar mais opções aqui
+                default=["AAPL"]
+            )
             submit_button = st.form_submit_button(label="Pesquisar")
 
     if submit_button:
-        if not topic:
-            st.error("Por favor, preencha o campo com o código da ação")
+        if not stock_symbols:
+            st.error("Por favor, selecione pelo menos uma ação")
         else:
-            # Busca os dados da ação
-            stock_data = fetch_stock_price(topic)
+            stock_data_list = []
+            valid_symbols = []
             
-            if stock_data is not None:
-                # Exibe o gráfico dos dados históricos
-                st.subheader(f"Dados Históricos para {topic}")
-                plot_stock_price(stock_data, topic)
-                
-                # Inicia o processo com o código da ação fornecido pelo usuário
-                with st.spinner('Buscando dados e realizando análises, por favor aguarde...'):
-                    results = crew.kickoff(inputs={"ticket": topic, "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+            # Busca os dados de cada ação selecionada
+            for symbol in stock_symbols:
+                stock_data = fetch_stock_price(symbol)
+                if stock_data is not None:
+                    stock_data_list.append(stock_data)
+                    valid_symbols.append(symbol)
 
-                # Exibe os resultados da pesquisa para o usuário
-                st.subheader("Resultados da sua pesquisa:")
-                st.markdown(results['final_output'])
-
-
+            # Exibe o gráfico comparativo se houver dados válidos
+            if valid_symbols:
+                st.subheader(f"Comparação de Preços Históricos para {', '.join(valid_symbols)}")
+                plot_stock_price_comparison(stock_data_list, valid_symbols)
+            else:
+                st.error("Nenhum dado encontrado para os códigos de ações fornecidos.")
