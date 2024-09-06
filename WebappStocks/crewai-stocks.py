@@ -10,9 +10,6 @@ from langchain.tools import Tool
 from langchain_openai import ChatOpenAI
 from langchain_community.tools import DuckDuckGoSearchResults
 
-# Teste para verificar se o st.secrets está funcionando corretamente
-st.write(st.secrets)  # Exibe as chaves carregadas do arquivo secrets.toml
-
 # Função para buscar o preço de uma ação usando a API do Yahoo Finance
 def fetch_stock_price(ticket):
     try:
@@ -65,7 +62,7 @@ else:
     # Configuração da tarefa para análise de preço das ações
     getStockPrice = Task(
         description="Analise o histórico de preços da ação {ticket} e crie uma análise de tendência - alta, baixa ou lateral",
-        expected_output="Especifique a tendência atual do preço da ação - alta, baixa ou lateral. Exemplo: ação = 'APPL, preço ALTA'",
+        expected_output="Especifique a tendência atual do preço da ação - alta, baixa ou lateral. Exemplo: ação = 'AAPL, preço ALTA'",
         agent=stockPriceAnalyst
     )
 
@@ -129,7 +126,7 @@ else:
     )
 
     # Inicia o processo de execução das tarefas configuradas para a equipe
-    results = crew.kickoff(inputs={"ticket": "APPL", "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+    results = crew.kickoff(inputs={"ticket": "AAPL", "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
     # Exibe o resultado final após a execução de todas as tarefas
     final_output = results['final_output']
@@ -139,7 +136,7 @@ else:
         st.header('Digite o código da ação para pesquisa')
 
         with st.form(key='research_form'):
-            topic = st.text_input("Selecione o código da ação")
+            topic = st.text_input("Selecione o código da ação", value="AAPL")  # Valor padrão AAPL
             submit_button = st.form_submit_button(label="Pesquisar")
 
     if submit_button:
@@ -161,4 +158,5 @@ else:
                 # Exibe os resultados da pesquisa para o usuário
                 st.subheader("Resultados da sua pesquisa:")
                 st.markdown(results['final_output'])
+
 
